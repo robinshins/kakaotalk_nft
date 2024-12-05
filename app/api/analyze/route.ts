@@ -210,11 +210,26 @@ async function processClaudeResponse(chatData: string, retries: number = 3): Pro
 
 export async function POST(request: Request) {
   try {
-    console.log('OpenAI API Key format check:', {
-      keyExists: !!process.env.OPENAI_API_KEY,
-      keyPrefix: process.env.OPENAI_API_KEY?.substring(0, 3)
-    });
-    
+    // API 키 존재 여부 확인
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('OpenAI API key is missing');
+      return NextResponse.json({ 
+        error: 'OpenAI API 키가 설정되지 않았습니다.' 
+      }, { 
+        status: 401 
+      });
+    }
+
+    // API 키 형식 확인
+    if (!process.env.OPENAI_API_KEY.startsWith('sk-')) {
+      console.error('Invalid OpenAI API key format');
+      return NextResponse.json({ 
+        error: 'OpenAI API 키 형식이 올바르지 않습니다.' 
+      }, { 
+        status: 401 
+      });
+    }
+
     const { type, chatData } = await request.json();
     
     if (type === 'image') {
@@ -297,9 +312,9 @@ export async function POST(request: Request) {
     let prompt = '';
     switch (type) {
       case 'basic':
-        prompt = `당신은 대화 분석 ��문가입니다. 
+        prompt = `당신은 대화 분석 전문가입니다. 
         아래 대화 내용을 바탕으로 대화 분석 리포트를 작성해주세요.
-        대화 참여자들의 말투, 성격, 추억 등을 분석하는 것이 목표이며, 추억은 최대한 많 포함시키도록 합니다.
+        대화 참여자들의 말투, 성격, 추억 등을 분석하는 것이 목표이며, 추억은 최대한 많이 포함시키도록 합니다.
         실제 대화 내역이 포함되도록 하고, 대화 내역은 각색하지 않고 그대로 인용해주세요.`;
         break;
       case 'emotion':
@@ -339,7 +354,7 @@ export async function POST(request: Request) {
         prompt = `당신은 기념일 생성 전문가입니다. 
         첨부된 채팅 내역을 바탕으로 두 사람에게 의미 있는 기념일을 만들어주세요.
         기념일의 날짜(월/일), 이유, 추천 이벤트, 그날 나눴던 대화 등을 포함해주세요.
-        실제 대화 내용은 각색하지 말고 로 인용해주세요.`;
+        실제 대화 내용은 각색하지 말고 그대로 인용해주세요.`;
         break;
       default:
         return NextResponse.json({ error: '잘못된 분석 유형입니다.' }, { status: 400 });
