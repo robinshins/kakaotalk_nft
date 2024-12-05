@@ -1,0 +1,78 @@
+.analysis-modal {
+  @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50;
+}
+
+.modal-container {
+  @apply bg-white rounded-xl max-w-2xl w-full max-h-[80vh] flex flex-col;
+}
+
+.modal-header {
+  @apply flex justify-between items-center p-6 border-b;
+}
+
+.modal-title {
+  @apply text-xl font-bold text-gray-900;
+}
+
+.close-button {
+  @apply text-gray-500 hover:text-gray-700 hover:bg-gray-100 p-2 rounded-full transition-colors;
+}
+
+.modal-content {
+  @apply flex-1 overflow-y-auto p-6;
+}
+
+.content-section {
+  @apply space-y-4 text-gray-800;
+}
+
+.analysis-section {
+  @apply mb-6 p-4 rounded-lg bg-gray-50 border border-gray-100;
+}
+
+.section-title {
+  @apply text-lg font-bold text-gray-900 mb-3;
+}
+
+.section-content {
+  @apply text-gray-800 space-y-2;
+}
+
+.highlight {
+  @apply bg-yellow-50 p-3 rounded border-l-4 border-yellow-400 my-2;
+}
+
+/* 추가 텍스트 스타일링 */
+.content-section p {
+  @apply leading-relaxed;
+}
+
+.content-section strong {
+  @apply font-bold text-gray-900;
+}
+
+.content-section ul {
+  @apply list-disc pl-5 my-2;
+}
+
+.content-section ol {
+  @apply list-decimal pl-5 my-2;
+}
+
+/* NFT 설명 섹션 스타일 수정 */
+.nft-description {
+  background: linear-gradient(to right, #fef3c7, #fde68a);
+  color: #5a4a00;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid #fcd34d;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.nft-description p {
+  font-weight: 500;
+}
+
+.nft-description span {
+  font-weight: 500;
+} 
