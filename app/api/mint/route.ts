@@ -9,7 +9,7 @@ import dotenv from 'dotenv';
 dotenv.config({ path: path.resolve(__dirname, '../../.env.local') });
 
 // 고정된 계정 주소 설정
-const FIXED_ACCOUNT_ADDRESS = '5D5KQVYQFCWOIMOMNLRTSGNUTC4JMAP4TZAKV5WGNWX2BEQ3NWNVIIJ7C4';
+const FIXED_ACCOUNT_ADDRESS = 'WBXMJHVQ7SHYMIN6KTQC2GRHOOPXLGH3GT46A6U7PUNJBT4EZ3BBXZUMV4';
 
 // .env 파일에서 니모닉 구문 로드
 async function loadPassphraseFromEnv() {
