@@ -16,41 +16,10 @@ async function generateNewAccount() {
   
   console.log('계정 생성됨:', account.addr);
   
-  // .env.local 파일에 니모닉 구문 저장
-  try {
-    const envPath = path.resolve(process.cwd(), '.env.local');
-    console.log('.env.local 파일 경로:', envPath);
-    
-    // 기존 .env.local 파일 읽기
-    let envContent = '';
-    try {
-      envContent = await fs.readFile(envPath, 'utf-8');
-    } catch (error) {
-      console.log('.env.local 파일이 없습니다. 새로 생성합니다.');
-    }
-
-    // PASSPHRASE 라인 찾기 또는 추가
-    const lines = envContent.split('\n');
-    const passphraseLineIndex = lines.findIndex(line => line.startsWith('PASSPHRASE='));
-    
-    if (passphraseLineIndex >= 0) {
-      lines[passphraseLineIndex] = `PASSPHRASE="${passphrase}"`;
-    } else {
-      lines.push(`PASSPHRASE="${passphrase}"`);
-    }
-
-    // 파일 저장
-    await fs.writeFile(envPath, lines.join('\n'), 'utf-8');
-    console.log('니모닉 구문이 .env.local 파일에 저장되었습니다.');
-    
-    // 환경 변수 즉시 적용
-    process.env.PASSPHRASE = passphrase;
-    
-    return { address: account.addr, passphrase };
-  } catch (error) {
-    console.error('.env.local 파일 저장 중 오류:', error);
-    throw error;
-  }
+  // 환경 변수 즉시 적용
+  process.env.PASSPHRASE = passphrase;
+  
+  return { address: account.addr, passphrase };
 }
 
 // .env 파일에서 니모닉 구문 로드
@@ -65,27 +34,6 @@ async function loadPassphraseFromEnv() {
       const { passphrase: newPassphrase } = await generateNewAccount();
       console.log('새로 생성된 니모닉 구문:', newPassphrase);
       return newPassphrase;
-    } else {
-      // 현재 메모리에 있는 니모닉 구문을 .env.local에 저장
-      const envPath = path.resolve(process.cwd(), '.env.local');
-      console.log('.env.local 파일 경로:', envPath);
-      
-      try {
-        let envContent = '';
-        try {
-          envContent = await fs.readFile(envPath, 'utf-8');
-        } catch (error) {
-          console.log('.env.local 파일이 없습니다. 새로 생성합니다.');
-        }
-
-        const lines = envContent.split('\n').filter(line => !line.startsWith('PASSPHRASE='));
-        lines.push(`PASSPHRASE="${passphrase}"`);
-
-        await fs.writeFile(envPath, lines.join('\n') + '\n', 'utf-8');
-        console.log('기존 니모닉 구문이 .env.local 파일에 저장되었습니다.');
-      } catch (error) {
-        console.error('.env.local 파일 저장 중 오류:', error);
-      }
     }
     
     console.log('기존 니모닉 구문 로드됨:', passphrase);
