@@ -8,35 +8,26 @@ import dotenv from 'dotenv';
 // .env.local 파일 로드
 dotenv.config({ path: path.resolve(__dirname, '../../.env.local') });
 
-// 새 계정 생성 함수
-async function generateNewAccount() {
-  console.log('새 계정 생성 시작...');
-  const account = algosdk.generateAccount();
-  const passphrase = algosdk.secretKeyToMnemonic(account.sk);
-  
-  console.log('계정 생성됨:', account.addr);
-  
-  // 환경 변수 즉시 적용
-  process.env.PASSPHRASE = passphrase;
-  
-  return { address: account.addr, passphrase };
-}
+// 고정된 계정 주소 설정
+const FIXED_ACCOUNT_ADDRESS = '5D5KQVYQFCWOIMOMNLRTSGNUTC4JMAP4TZAKV5WGNWX2BEQ3NWNVIIJ7C4';
 
 // .env 파일에서 니모닉 구문 로드
 async function loadPassphraseFromEnv() {
   console.log('니모닉 구문 로드 시도...');
   try {
-    const passphrase = process.env.PASSPHRASE;
-    console.log('현재 PASSPHRASE:', passphrase);
+    const passphrase = process.env.ALGORAND_PASSPHRASE;
     
     if (!passphrase) {
-      console.log('니모닉 구문이 없습니다. 새 계정을 생성합니다...');
-      const { passphrase: newPassphrase } = await generateNewAccount();
-      console.log('새로 생성된 니모닉 구문:', newPassphrase);
-      return newPassphrase;
+      throw new Error('환경 변수에 ALGORAND_PASSPHRASE가 설정되어 있지 않습니다.');
     }
     
-    console.log('기존 니모닉 구문 로드됨:', passphrase);
+    // 로드된 니모닉으로 생성되는 주소가 고정 주소와 일치하는지 확인
+    const account = algosdk.mnemonicToSecretKey(passphrase);
+    if (account.addr !== FIXED_ACCOUNT_ADDRESS) {
+      throw new Error('환경 변수의 니모닉이 설정된 주소와 일치하지 않습니다.');
+    }
+    
+    console.log('기존 니모닉 구문 로드됨');
     return passphrase;
   } catch (error) {
     console.error('니모닉 구문 로드 중 오류:', error);
