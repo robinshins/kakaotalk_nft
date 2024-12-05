@@ -210,6 +210,11 @@ async function processClaudeResponse(chatData: string, retries: number = 3): Pro
 
 export async function POST(request: Request) {
   try {
+    console.log('OpenAI API Key format check:', {
+      keyExists: !!process.env.OPENAI_API_KEY,
+      keyPrefix: process.env.OPENAI_API_KEY?.substring(0, 3)
+    });
+    
     const { type, chatData } = await request.json();
     
     if (type === 'image') {
@@ -292,9 +297,9 @@ export async function POST(request: Request) {
     let prompt = '';
     switch (type) {
       case 'basic':
-        prompt = `당신은 대화 분석 전문가입니다. 
+        prompt = `당신은 대화 분석 ��문가입니다. 
         아래 대화 내용을 바탕으로 대화 분석 리포트를 작성해주세요.
-        대화 참여자들의 말투, 성격, 추억 등을 분석하는 것이 목표이며, 추억은 최대한 많�� 포함시키도록 합니다.
+        대화 참여자들의 말투, 성격, 추억 등을 분석하는 것이 목표이며, 추억은 최대한 많 포함시키도록 합니다.
         실제 대화 내역이 포함되도록 하고, 대화 내역은 각색하지 않고 그대로 인용해주세요.`;
         break;
       case 'emotion':
@@ -317,7 +322,7 @@ export async function POST(request: Request) {
         break;
       case 'past':
         prompt = `당신은 전생 분석 전문가니다. 
-        ���부된 채팅 내용을 탕으로 두 사람이 전생에 어떤 관계였을지 추측하고 이를 재미있는 이야기로 작성해주세요.
+        부된 채팅 내용을 탕으로 두 사람이 전생에 어떤 관계였을지 추측하고 이를 재미있는 이야기로 작성해주세요.
         전생은 사람이 닌 동식물이나 물체일 수도 있으니 자유롭게 상상.
         최소 100년 전을 상상하여 관계를 각색하고 밀접한 관계를 만들어주세요.
         전생에 어떤 관계였는지를 먼저 명확하게 밝히고 이야기를 시작하세요.
@@ -334,7 +339,7 @@ export async function POST(request: Request) {
         prompt = `당신은 기념일 생성 전문가입니다. 
         첨부된 채팅 내역을 바탕으로 두 사람에게 의미 있는 기념일을 만들어주세요.
         기념일의 날짜(월/일), 이유, 추천 이벤트, 그날 나눴던 대화 등을 포함해주세요.
-        실제 대화 내용은 각색하지 말고 ��로 인용해주세요.`;
+        실제 대화 내용은 각색하지 말고 로 인용해주세요.`;
         break;
       default:
         return NextResponse.json({ error: '잘못된 분석 유형입니다.' }, { status: 400 });
