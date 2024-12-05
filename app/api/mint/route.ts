@@ -15,7 +15,9 @@ const FIXED_ACCOUNT_ADDRESS = '5D5KQVYQFCWOIMOMNLRTSGNUTC4JMAP4TZAKV5WGNWX2BEQ3N
 async function loadPassphraseFromEnv() {
   console.log('니모닉 구문 로드 시도...');
   try {
+    console.log('모든 환경 변수:', process.env);
     const passphrase = process.env.ALGORAND_PASSPHRASE;
+    console.log('로드된 ALGORAND_PASSPHRASE:', passphrase);
     
     if (!passphrase) {
       throw new Error('환경 변수에 ALGORAND_PASSPHRASE가 설정되어 있지 않습니다.');
