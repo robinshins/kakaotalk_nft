@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import ImageUpload from '@/components/ImageUpload';
 
@@ -14,7 +14,7 @@ interface NFTMetadata {
   };
 }
 
-export default function MintPage() {
+function MintPageContent() {
   console.log('MintPage 렌더링');
   const searchParams = useSearchParams();
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -38,9 +38,14 @@ export default function MintPage() {
     const description = searchParams.get('description');
 
     if (image) {
-      const fullImageUrl = image.startsWith('/') 
-        ? `${window.location.origin}${image}`
-        : image;
+      const decodedImage = decodeURIComponent(image);
+
+      const fullImageUrl = decodedImage.startsWith('data:') 
+        ? decodedImage 
+        : decodedImage.startsWith('http') 
+          ? decodedImage
+          : `${window.location.origin}${decodedImage.startsWith('/') ? '' : '/'}${decodedImage}`;
+          
       console.log('이미지 URL 설정:', fullImageUrl);
       setImageUrl(fullImageUrl);
     }
@@ -56,7 +61,7 @@ export default function MintPage() {
 
   const handleFileUpload = (file: File) => {
     setImageFile(file);
-    setImageUrl(''); // 파일 업로드시 URL 초기화
+    setImageUrl(''); // 파일 업로드 URL 초기화
   };
 
   const handleMetadataChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -77,28 +82,54 @@ export default function MintPage() {
       setError(null);
 
       // 이미지 처리
-      let formData = new FormData();
+      const formData = new FormData();
       
       if (imageFile) {
+        console.log('Using uploaded file');
         formData.append('file', imageFile);
       } else if (imageUrl) {
-        const response = await fetch(imageUrl);
-        const blob = await response.blob();
-        formData.append('file', blob);
+        console.log('Fetching image from URL:', imageUrl);
+        try {
+          const response = await fetch(imageUrl, {
+            mode: 'cors',
+            cache: 'no-cache'
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Failed to fetch image: ${response.status}`);
+          }
+          
+          const blob = await response.blob();
+          console.log('Image blob created:', blob.type, blob.size);
+          
+          const extension = imageUrl.split('.').pop()?.toLowerCase() || 'webp';
+          formData.append('file', blob, `image.${extension}`);
+        } catch (fetchError) {
+          console.error('Error fetching image:', fetchError);
+          throw new Error('이미지를 가져오는데 실패했습니다');
+        }
       } else {
         throw new Error('이미지를 선택해주세요');
       }
 
+      console.log('Uploading to Pinata...');
       const uploadResponse = await fetch('/api/pinata/upload', {
         method: 'POST',
         body: formData
       });
 
       const uploadData = await uploadResponse.json();
+      console.log('Pinata response:', uploadData);
       
       if (!uploadData.success) {
         throw new Error('이미지 업로드 실패');
       }
+
+      // IPFS URL 구성
+      const ipfsUrl = uploadData.ipfsHash.startsWith('ipfs://') 
+        ? uploadData.ipfsHash 
+        : `ipfs://${uploadData.ipfsHash}`;
+      console.log('IPFS URL:', ipfsUrl);
 
       const mintResponse = await fetch('/api/mint', {
         method: 'POST',
@@ -108,12 +139,13 @@ export default function MintPage() {
         body: JSON.stringify({
           metadata: {
             ...metadata,
-            image: uploadData.ipfsHash
+            image: ipfsUrl  // IPFS URL 형식으로 변경
           }
         })
       });
 
       const mintData = await mintResponse.json();
+      console.log('Mint response:', mintData);
       
       if (!mintData.success) {
         throw new Error('NFT 민팅 실패');
@@ -121,6 +153,7 @@ export default function MintPage() {
 
       setAssetId(mintData.assetId);
     } catch (err: any) {
+      console.error('Minting error:', err);
       setError(err.message);
     } finally {
       setIsLoading(false);
@@ -149,7 +182,7 @@ export default function MintPage() {
             <div className="bg-white/50 dark:bg-white/5 p-4 rounded-xl">
               <div className="text-2xl mb-2">🎨</div>
               <h3 className="font-semibold text-purple-900 dark:text-purple-100 mb-1">작품의 진정성</h3>
-              <p className="text-sm text-purple-700 dark:text-purple-300">당신의 창작물이 가진 고유한 가치를 인정받습니다</p>
+              <p className="text-sm text-purple-700 dark:text-purple-300">당신의 창작물이 고유한 가치를 인정받습니다</p>
             </div>
             <div className="bg-white/50 dark:bg-white/5 p-4 rounded-xl">
               <div className="text-2xl mb-2">💫</div>
@@ -239,5 +272,13 @@ export default function MintPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function MintPage() {
+  return (
+    <Suspense fallback={<div>로딩 중...</div>}>
+      <MintPageContent />
+    </Suspense>
   );
 }

@@ -20,29 +20,50 @@ export default function GalleryPage() {
       try {
         const algodClient = new algosdk.Algodv2('', 'https://testnet-api.algonode.cloud', 443);
         const accountInfo = await algodClient.accountInformation(walletAddress).do();
-        console.log('Account Info:', accountInfo); // 응답 확인
-
-        const assets = accountInfo.createdAssets || []; // 자산이 없을 경우 빈 배열로 초기화
+        
+        const assets = accountInfo.assets || accountInfo.createdAssets || [];
 
         const imageItems = await Promise.all(
           assets.map(async (asset: any) => {
-            const assetId = asset.index;
-            const assetInfo = await algodClient.getAssetByID(assetId).do();
-            console.log('Asset Params:', assetInfo.params); // 디버깅을 위해 추가
-            
-            const assetURL = assetInfo.params.url || '';
-            const imageUrl = assetURL ? assetURL.replace('ipfs://', 'https://ipfs.io/ipfs/') : '';
+            try {
+              if (!asset['asset-id']) {
+                console.warn('Invalid asset id:', asset);
+                return null;
+              }
 
-            return {
-              id: assetId,
-              title: assetInfo.params.name || 'NFT',
-              user: walletAddress,
-              url: imageUrl,
-            };
+              const assetId = asset['asset-id'];
+              const assetInfo = await algodClient.getAssetByID(assetId).do();
+              
+              let imageUrl = assetInfo.params.url || '';
+              if (imageUrl.startsWith('ipfs://')) {
+                const ipfsHash = imageUrl.replace(/ipfs:\/\//g, '');
+                if (ipfsHash) {
+                  imageUrl = `https://ipfs.io/ipfs/${ipfsHash}`;
+                } else {
+                  console.warn('Invalid IPFS URL:', imageUrl);
+                  imageUrl = '/placeholder-image.svg';
+                }
+              } else if (!imageUrl) {
+                imageUrl = '/placeholder-image.svg';
+              }
+
+              console.log('Processing URL:', imageUrl);
+
+              return {
+                id: assetId,
+                title: assetInfo.params.name || 'Untitled NFT',
+                user: walletAddress,
+                url: imageUrl,
+              };
+            } catch (error) {
+              console.error(`Error fetching asset ${asset['asset-id']}:`, error);
+              return null;
+            }
           })
         );
 
-        setImages(imageItems);
+        // 유효한 이미지만 필터링
+        setImages(imageItems.filter((item): item is ImageItem => item !== null));
       } catch (error) {
         console.error('Error fetching assets:', error);
       }
@@ -75,6 +96,9 @@ export default function GalleryPage() {
                 fill 
                 priority
                 className="rounded-lg object-cover"
+                onError={(e: any) => {
+                  e.target.src = '/placeholder-image.svg'; // 로딩 실패시 기본 이미지 표시
+                }}
               />
             </div>
             <div className="px-0.5">

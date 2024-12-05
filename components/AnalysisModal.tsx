@@ -73,30 +73,53 @@ export default function AnalysisModal({ isOpen, onClose, title, content }: Analy
   const handleMintNFT = async () => {
     if (typeof content !== 'string' && content.imageUrl) {
       try {
+        // 이미지가 이미 URL인 경우 그대로 사용
+        if (content.imageUrl.startsWith('http') || content.imageUrl.startsWith('/uploads/')) {
+          const fullImageUrl = content.imageUrl.startsWith('http') 
+            ? content.imageUrl 
+            : `${window.location.origin}${content.imageUrl}`;
+            
+          const params = new URLSearchParams({
+            image: fullImageUrl,
+            name: '대화 분석 NFT',
+            description: content.explanation || '',
+            unitName: 'CHAT',
+            returnUrl: window.location.pathname + window.location.search
+          });
+
+          router.push(`/mint?${params.toString()}`);
+          return;
+        }
+
+        // base64 이미지인 경우 업로드
         const response = await fetch('/api/uploadImage', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ image: content.imageUrl }),
+          body: JSON.stringify({ 
+            image: content.imageUrl,
+            fileName: 'analysis-image.webp'
+          }),
         });
 
         if (!response.ok) {
-          // 500 에러일 경우 재시도
-          if (response.status === 500) {
-            alert('분석 중 오류가 발생했습니다. 다시 시도해주세요.');
-            return;
-          }
-          throw new Error('Image upload failed');
+          console.error('Upload failed:', await response.text());
+          alert('이미지 업로드에 실패했습니다.');
+          return;
         }
 
         const data = await response.json();
+        const fullImageUrl = data.url.startsWith('http') 
+          ? data.url 
+          : `${window.location.origin}${data.url}`;
         
         const params = new URLSearchParams({
-          image: data.url,
+          image: fullImageUrl,
           name: '대화 분석 NFT',
           description: content.explanation || '',
           unitName: 'CHAT',
+          returnUrl: window.location.pathname + window.location.search
         });
 
         router.push(`/mint?${params.toString()}`);
@@ -112,16 +135,16 @@ export default function AnalysisModal({ isOpen, onClose, title, content }: Analy
       return (
         <ReactMarkdown
           components={{
-            h1: ({node, ...props}) => <h1 className="text-2xl font-bold mb-4" {...props} />,
-            h2: ({node, ...props}) => <h2 className="text-xl font-bold mb-3" {...props} />,
-            h3: ({node, ...props}) => <h3 className="text-lg font-bold mb-2" {...props} />,
-            p: ({node, ...props}) => <p className="mb-4 text-gray-800" {...props} />,
-            ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-4" {...props} />,
-            ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-4" {...props} />,
-            li: ({node, ...props}) => <li className="mb-1" {...props} />,
-            strong: ({node, ...props}) => <strong className="font-bold text-gray-900" {...props} />,
-            em: ({node, ...props}) => <em className="italic" {...props} />,
-            blockquote: ({node, ...props}) => (
+            h1: ({...props}) => <h1 className="text-2xl font-bold mb-4" {...props} />,
+            h2: ({...props}) => <h2 className="text-xl font-bold mb-3" {...props} />,
+            h3: ({...props}) => <h3 className="text-lg font-bold mb-2" {...props} />,
+            p: ({...props}) => <p className="mb-4 text-gray-800" {...props} />,
+            ul: ({...props}) => <ul className="list-disc pl-5 mb-4" {...props} />,
+            ol: ({...props}) => <ol className="list-decimal pl-5 mb-4" {...props} />,
+            li: ({...props}) => <li className="mb-1" {...props} />,
+            strong: ({...props}) => <strong className="font-bold text-gray-900" {...props} />,
+            em: ({...props}) => <em className="italic" {...props} />,
+            blockquote: ({...props}) => (
               <blockquote className="border-l-4 border-gray-200 pl-4 mb-4 italic" {...props} />
             ),
           }}
@@ -154,7 +177,7 @@ export default function AnalysisModal({ isOpen, onClose, title, content }: Analy
             {/* NFT 설명 섹션 */}
             <div className="bg-gradient-to-r from-amber-50 via-amber-100 to-amber-50 p-4 rounded-xl border border-amber-200 shadow-sm">
               <h3 className="text-lg font-bold text-amber-900 mb-2">
-                특별한 순간을 영원히 간직하세요
+                특별 순간을 영원히 간직하세요
               </h3>
               <p className="text-sm text-amber-900 leading-relaxed mb-3">
                 이 이미지는 여러분의 대화에서 발견된 특별한 감정을 AI가 예술적으로 표현한 것입니다. 
@@ -194,44 +217,7 @@ export default function AnalysisModal({ isOpen, onClose, title, content }: Analy
                 이미지 다운로드
               </a>
             )}
-
-            {/* 티셔츠 미리보기 섹션 */}
-            <div className="mt-6 p-4 bg-gray-50 rounded-xl">
-              <h3 className="text-lg font-bold text-gray-900 mb-3">
-                굿즈 미리보기
-              </h3>
-              <div className="relative w-full max-w-sm mx-auto aspect-square">
-                {/* 티셔츠 템플릿 이미지 */}
-                <Image
-                  src="/tshirt-template.png"
-                  alt="T-shirt template"
-                  width={400}
-                  height={400}
-                  className="w-full h-full object-contain"
-                />
-                {/* NFT 이미지 오버레이 */}
-                <div className="absolute top-[28%] left-[50%] transform -translate-x-1/2 w-[40%] aspect-square perspective-container">
-                  <Image
-                    src={imageUrl}
-                    alt="NFT Preview"
-                    width={200}
-                    height={200}
-                    className="w-full h-full object-contain transform rotate-[10deg] perspective-image"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <style jsx>{`
-              .perspective-container {
-                perspective: 500px;
-              }
-              .perspective-image {
-                transform: rotateY(10deg) rotateX(5deg);
-                box-shadow: 2px 2px 10px rgba(0,0,0,0.2);
-              }
-            `}</style>
-          </div>
+        </div>
         )}
       </div>
     );

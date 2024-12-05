@@ -5,6 +5,13 @@ import Image from "next/image";
 import algosdk from 'algosdk';
 import Link from 'next/link';
 
+interface ImageItem {
+  id: number;
+  title: string;
+  user: string;
+  url: string;
+}
+
 export default function Home() {
   const [images, setImages] = useState<any[]>([]);
   const walletAddress = 'WBXMJHVQ7SHYMIN6KTQC2GRHOOPXLGH3GT46A6U7PUNJBT4EZ3BBXZUMV4';
@@ -14,25 +21,48 @@ export default function Home() {
       try {
         const algodClient = new algosdk.Algodv2('', 'https://testnet-api.algonode.cloud', 443);
         const accountInfo = await algodClient.accountInformation(walletAddress).do();
-        const assets = accountInfo.createdAssets || [];
+        const assets = accountInfo.assets || accountInfo.createdAssets || [];
 
         const imageItems = await Promise.all(
           assets.map(async (asset: any) => {
-            const assetId = asset.index;
-            const assetInfo = await algodClient.getAssetByID(assetId).do();
-            const assetURL = assetInfo.params.url || '';
-            const imageUrl = assetURL ? assetURL.replace('ipfs://', 'https://ipfs.io/ipfs/') : '';
+            try {
+              if (!asset['asset-id']) {
+                console.warn('Invalid asset id:', asset);
+                return null;
+              }
 
-            return {
-              id: assetId,
-              title: assetInfo.params.name || 'NFT',
-              user: walletAddress,
-              url: imageUrl,
-            };
+              const assetId = asset['asset-id'];
+              const assetInfo = await algodClient.getAssetByID(assetId).do();
+              
+              let imageUrl = assetInfo.params.url || '';
+              if (imageUrl.startsWith('ipfs://')) {
+                const ipfsHash = imageUrl.replace(/ipfs:\/\//g, '');
+                if (ipfsHash) {
+                  imageUrl = `https://ipfs.io/ipfs/${ipfsHash}`;
+                } else {
+                  console.warn('Invalid IPFS URL:', imageUrl);
+                  imageUrl = '/placeholder-image.svg';
+                }
+              } else if (!imageUrl) {
+                imageUrl = '/placeholder-image.svg';
+              }
+
+              console.log('Processing URL:', imageUrl);
+
+              return {
+                id: assetId,
+                title: assetInfo.params.name || 'NFT',
+                user: walletAddress,
+                url: imageUrl,
+              };
+            } catch (error) {
+              console.error(`Error fetching asset ${asset['asset-id']}:`, error);
+              return null;
+            }
           })
         );
 
-        setImages(imageItems);
+        setImages(imageItems.filter((item): item is ImageItem => item !== null));
       } catch (error) {
         console.error('Error fetching assets:', error);
       }
@@ -110,6 +140,10 @@ export default function Home() {
                   fill 
                   priority
                   className="rounded-lg object-cover"
+                  onError={(e) => {
+                    console.error(`Failed to load image: ${image.url}`);
+                    e.currentTarget.src = '/placeholder-image.svg';
+                  }}
                 />
               </div>
               <div className="px-0.5">

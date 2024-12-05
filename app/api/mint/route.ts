@@ -101,7 +101,7 @@ function createMetadataHash(metadata: string): Uint8Array {
   const hash = createHash('sha512-256');
   hash.update('arc0003/amj');
   hash.update(metadata);
-  return hash.digest();
+  return new Uint8Array(hash.digest());
 }
 export async function POST(request: Request) {
     try {
@@ -123,7 +123,7 @@ export async function POST(request: Request) {
       const metadataHash = createMetadataHash(metadataStr);
   
       // 1. 주소 문자열 생성
-      const addressStr = algosdk.encodeAddress(account.addr.publicKey);
+      const addressStr = account.addr;
       console.log('Encoded address:', addressStr);
 
       // 2. 트랜잭션 파라미터 가져오기
@@ -131,8 +131,9 @@ export async function POST(request: Request) {
       console.log('Transaction params from algod:', params);
       
       // 3. 트랜잭션 생성
+      const assetURL = metadata.image.startsWith('ipfs://') ? metadata.image : `ipfs://${metadata.image}`;
       const txn = algosdk.makeAssetCreateTxnWithSuggestedParamsFromObject({
-        sender: addressStr,
+        from: addressStr,
         total: 1,
         decimals: 0,
         defaultFrozen: false,
@@ -142,15 +143,15 @@ export async function POST(request: Request) {
         clawback: addressStr,
         unitName: metadata.unitName || 'NFT',
         assetName: metadata.name || 'NFT Asset',
-        assetURL: `ipfs://${metadata.image}`,
+        assetURL: assetURL,
         assetMetadataHash: metadataHash,
         note: new Uint8Array(Buffer.from(metadataStr)),
         suggestedParams: {
           ...params,
-          fee: Number(params.fee),
-          firstValid: Number(params.firstValid),
-          lastValid: Number(params.lastValid),
-        }
+          fee: 1000,
+          firstRound: params.firstRound,
+          lastRound: params.lastRound,
+        },
       });
 
       console.log('Transaction created successfully');
@@ -160,19 +161,31 @@ export async function POST(request: Request) {
       console.log('Transaction signed');
   
       // 5. 트랜잭션 전송
-      const txId = (await algodClient.sendRawTransaction(signedTxn).do()).txid;
-      console.log('트랜잭션 전송됨, ID:', txId);
-  
+      let txId;
+      try {
+        const sendTxnResponse = await algodClient.sendRawTransaction(signedTxn).do();
+        txId = sendTxnResponse.txId;
+        console.log('트랜잭션 전송됨, ID:', txId);
+      } catch (error) {
+        console.error('트랜잭션 전송 중 오류:', error);
+        throw new Error('트랜잭션 전송 실패');
+      }
+
       // 6. 트랜잭션 확인 대기
-      const confirmedTxn = await algosdk.waitForConfirmation(algodClient, txId, 4);
-      const assetId = confirmedTxn.assetIndex;
-      console.log('NFT 생성 완료, Asset ID:', assetId);
-  
-      return NextResponse.json({ 
-        success: true, 
-        assetId: Number(assetId),
-        accountAddress: account.addr 
-      });
+      try {
+        const confirmedTxn = await algosdk.waitForConfirmation(algodClient, txId, 10);
+        const assetId = confirmedTxn['asset-index'];
+        console.log('NFT 생성 완료, Asset ID:', assetId);
+
+        return NextResponse.json({ 
+          success: true, 
+          assetId: Number(assetId),
+          accountAddress: account.addr 
+        });
+      } catch (error) {
+        console.error('트랜잭션 확인 중 오류:', error);
+        throw new Error('트랜잭션 확인 실패');
+      }
   
     } catch (error: any) {
       console.error('Minting error:', error);
